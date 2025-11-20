@@ -1,5 +1,8 @@
 """Entry point for running the FastAPI GraphQL server."""
+
 from __future__ import annotations
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from strawberry.fastapi import GraphQLRouter
@@ -8,12 +11,15 @@ from .db import Base, engine, get_session
 from .schema import schema
 
 
-app = FastAPI(title="GraphQL Auth Service", version="0.2.0")
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Run startup logic
     Base.metadata.create_all(bind=engine)
+    yield
+    # Run shutdown logic if any
+
+
+app = FastAPI(title="GraphQL Auth Service", version="0.2.0", lifespan=lifespan)
 
 
 @app.middleware("http")

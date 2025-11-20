@@ -1,4 +1,5 @@
 """GraphQL schema and resolvers implemented with Strawberry."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -59,7 +60,9 @@ class Mutation:
         email: Optional[str] = None,
     ) -> AuthPayload:
         session: Session = info.context["session"]
-        new_user = User(username=username, email=email, password_hash=hash_password(password))
+        new_user = User(
+            username=username, email=email, password_hash=hash_password(password)
+        )
         session.add(new_user)
         try:
             session.commit()
