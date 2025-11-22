@@ -84,13 +84,18 @@ export default function HomePage() {
   }, [token, router]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>History</CardTitle>
-          <Button variant="outline" onClick={() => router.push("/login")}>Switch user</Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
+    <div className="flex min-h-screen bg-muted/40">
+      <aside className="flex w-[320px] flex-col border-r bg-background">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold">History</h2>
+            <p className="text-xs text-muted-foreground">Recent activity</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => router.push("/login")}>
+            Switch user
+          </Button>
+        </div>
+        <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {loading ? <p className="text-sm text-muted-foreground">Loading history...</p> : null}
           {historyError ? <p className="text-sm text-destructive">{historyError}</p> : null}
           {!loading && !historyError && history.length === 0 ? (
@@ -100,34 +105,36 @@ export default function HomePage() {
             {history.map((item) => (
               <li
                 key={item.id}
-                className="rounded-md border px-3 py-2 text-sm hover:border-primary hover:bg-accent"
+                className="rounded-md border bg-card px-3 py-2 text-sm shadow-sm transition-colors hover:border-primary hover:bg-accent"
               >
                 <p className="font-medium">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleString()}</p>
               </li>
             ))}
           </ul>
-        </CardContent>
-      </Card>
+        </div>
+      </aside>
 
-      <Card className="min-h-[320px]">
-        <CardHeader>
-          <CardTitle>Welcome{auth ? `, ${auth.user.username}` : ""}</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>
-            The right side intentionally stays open so you can add content after authenticating. Use the left sidebar to
-            review history pulled from the GraphQL endpoint.
-          </p>
-          <p className="mt-4">
-            Want to try another account?{' '}
-            <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
-              Register here
-            </Link>
-            .
-          </p>
-        </CardContent>
-      </Card>
+      <main className="flex flex-1 items-start justify-center p-10">
+        <Card className="w-full max-w-4xl">
+          <CardHeader>
+            <CardTitle>Welcome{auth ? `, ${auth.user.username}` : ""}</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              The right side intentionally stays open so you can add content after authenticating. Use the left sidebar
+              to review history pulled from the GraphQL endpoint.
+            </p>
+            <p className="mt-4">
+              Want to try another account?{' '}
+              <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+                Register here
+              </Link>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
