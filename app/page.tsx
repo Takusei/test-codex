@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AppSidebar, HistoryEntry } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { requestGraphQL } from "@/lib/graphql-client";
 
 const ME_QUERY = `
@@ -29,14 +31,24 @@ const HISTORY_QUERY = `
 `;
 
 type Auth = { token: string; user: { id: string; username: string; email: string; createdAt: string } };
-type HistoryItem = { id: string; label: string; timestamp: string };
+
+type State = {
+  auth: Auth | null;
+  history: HistoryEntry[];
+  loadingHistory: boolean;
+  historyError: string | null;
+};
+
+const INITIAL_STATE: State = {
+  auth: null,
+  history: [],
+  loadingHistory: false,
+  historyError: null,
+};
 
 export default function HomePage() {
   const router = useRouter();
-  const [auth, setAuth] = useState<Auth | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [state, setState] = useState<State>(INITIAL_STATE);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("auth") : null;
@@ -44,28 +56,28 @@ export default function HomePage() {
       router.replace("/login");
       return;
     }
+
     const parsed = JSON.parse(stored) as Auth;
-    setAuth(parsed);
+    setState((current) => ({ ...current, auth: parsed }));
 
     const fetchHistory = async () => {
-      setLoading(true);
-      setHistoryError(null);
+      setState((current) => ({ ...current, loadingHistory: true, historyError: null }));
       try {
-        const data = await requestGraphQL<{ history: HistoryItem[] }>(HISTORY_QUERY, undefined, {
+        const data = await requestGraphQL<{ history: HistoryEntry[] }>(HISTORY_QUERY, undefined, {
           token: parsed.token,
         });
-        setHistory(data.history);
+        setState((current) => ({ ...current, history: data.history }));
       } catch (err) {
-        setHistoryError((err as Error).message);
+        setState((current) => ({ ...current, historyError: (err as Error).message }));
       } finally {
-        setLoading(false);
+        setState((current) => ({ ...current, loadingHistory: false }));
       }
     };
 
     fetchHistory();
   }, [router]);
 
-  const token = auth?.token;
+  const token = state.auth?.token;
 
   useEffect(() => {
     if (!token) return;
@@ -73,7 +85,7 @@ export default function HomePage() {
     const validateSession = async () => {
       try {
         const data = await requestGraphQL<{ me: Auth["user"] }>(ME_QUERY, undefined, { token });
-        setAuth((current) => (current ? { ...current, user: data.me } : current));
+        setState((current) => ({ ...current, auth: current.auth ? { ...current.auth, user: data.me } : current.auth }));
       } catch (err) {
         console.error("Session validation failed", err);
         router.replace("/login");
@@ -83,58 +95,62 @@ export default function HomePage() {
     validateSession();
   }, [token, router]);
 
-  return (
-    <div className="flex min-h-screen bg-muted/40">
-      <aside className="flex w-[320px] flex-col border-r bg-background">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold">History</h2>
-            <p className="text-xs text-muted-foreground">Recent activity</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => router.push("/login")}>
-            Switch user
-          </Button>
-        </div>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {loading ? <p className="text-sm text-muted-foreground">Loading history...</p> : null}
-          {historyError ? <p className="text-sm text-destructive">{historyError}</p> : null}
-          {!loading && !historyError && history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No history yet.</p>
-          ) : null}
-          <ul className="space-y-2">
-            {history.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-md border bg-card px-3 py-2 text-sm shadow-sm transition-colors hover:border-primary hover:bg-accent"
-              >
-                <p className="font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{new Date(item.timestamp).toLocaleString()}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </aside>
+  const handleSwitchUser = () => {
+    localStorage.removeItem("auth");
+    router.replace("/login");
+  };
 
-      <main className="flex flex-1 items-start justify-center p-10">
-        <Card className="w-full max-w-4xl">
-          <CardHeader>
-            <CardTitle>Welcome{auth ? `, ${auth.user.username}` : ""}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              The right side intentionally stays open so you can add content after authenticating. Use the left sidebar
-              to review history pulled from the GraphQL endpoint.
-            </p>
-            <p className="mt-4">
-              Want to try another account?{' '}
-              <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
-                Register here
-              </Link>
-              .
-            </p>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+  const username = state.auth?.user.username;
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-muted/40">
+        <AppSidebar
+          history={state.history}
+          loading={state.loadingHistory}
+          error={state.historyError}
+          onSwitchUser={handleSwitchUser}
+        />
+
+        <SidebarInset>
+          <header className="flex h-16 items-center gap-3 border-b bg-background/80 px-6">
+            <SidebarTrigger />
+            <div className="flex flex-1 items-center justify-between pl-1">
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Signed in</span>
+                <span className="text-sm font-medium">{username ?? ""}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" asChild>
+                  <Link href="/register">Create account</Link>
+                </Button>
+                <Button variant="outline" onClick={handleSwitchUser}>
+                  Log out
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex flex-1 flex-col gap-6 p-6">
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Welcome{username ? `, ${username}` : ""}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <p>
+                  The left sidebar mirrors the shadcn sidebar pattern so your history is anchored to the left, similar to a
+                  desktop chat layout.
+                </p>
+                <p className="mt-3">
+                  Add your conversation or document view here. The right side stays flexible for desktop, without mobile
+                  adjustments.
+                </p>
+              </CardContent>
+            </Card>
+            <div className="flex-1 rounded-lg border border-dashed bg-background/60" />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
