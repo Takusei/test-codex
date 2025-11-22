@@ -7,10 +7,35 @@ from typing import Optional
 import strawberry
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from strawberry.permission import BasePermission
 from strawberry.types import Info
 
-from .auth import create_access_token, hash_password, verify_password
+from .auth import (
+    create_access_token,
+    get_username_from_token,
+    hash_password,
+    verify_password,
+)
 from .models import User
+
+
+class IsAuthenticated(BasePermission):
+    message = "User is not authenticated"
+
+    def has_permission(self, source: Any, info: Info, **kwargs) -> bool:
+        request = info.context["request"]
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            username = get_username_from_token(token)
+            if username:
+                session: Session = info.context["session"]
+                user = session.query(User).filter_by(username=username).first()
+                if user:
+                    # Attach user to context for easy access in resolver
+                    info.context["user"] = user
+                    return True
+        return False
 
 
 def _to_user_type(user: User) -> "UserType":
@@ -42,11 +67,10 @@ class AuthPayload:
 
 @strawberry.type
 class Query:
-    @strawberry.field
-    def me(self, info: Info, username: str) -> Optional[UserType]:
-        session: Session = info.context["session"]
-        user = session.query(User).filter_by(username=username).first()
-        return _to_user_type(user) if user else None
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    def me(self, info: Info) -> Optional[UserType]:
+        current_user: User = info.context["user"]
+        return _to_user_type(current_user)
 
 
 @strawberry.type
