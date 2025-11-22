@@ -65,12 +65,14 @@ export default function HomePage() {
     fetchHistory();
   }, [router]);
 
+  const token = auth?.token;
+
   useEffect(() => {
-    if (!auth) return;
+    if (!token) return;
 
     const validateSession = async () => {
       try {
-        const data = await requestGraphQL<{ me: Auth["user"] }>(ME_QUERY, undefined, { token: auth.token });
+        const data = await requestGraphQL<{ me: Auth["user"] }>(ME_QUERY, undefined, { token });
         setAuth((current) => (current ? { ...current, user: data.me } : current));
       } catch (err) {
         console.error("Session validation failed", err);
@@ -79,7 +81,7 @@ export default function HomePage() {
     };
 
     validateSession();
-  }, [auth, router]);
+  }, [token, router]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
