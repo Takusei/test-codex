@@ -11,16 +11,22 @@ import { Label } from "@/components/ui/label";
 import { requestGraphQL } from "@/lib/graphql-client";
 
 const REGISTER_MUTATION = `
-  mutation Register($email: String!, $password: String!) {
-    register(email: $email, password: $password) {
-      id
-      email
+  mutation Register($username: String!, $email: String!, $password: String!) {
+    register(username: $username, email: $email, password: $password) {
+      token
+      user {
+        id
+        username
+        email
+        createdAt
+      }
     }
   }
 `;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +40,17 @@ export default function RegisterPage() {
     setSuccess(null);
 
     try {
-      const data = await requestGraphQL<{ register: { id: string; email: string } }>(REGISTER_MUTATION, {
+      const data = await requestGraphQL<{
+        register: {
+          token: string;
+          user: { id: string; username: string; email: string; createdAt: string };
+        };
+      }>(REGISTER_MUTATION, {
+        username,
         email,
         password,
       });
-      setSuccess(`Registered ${data.register.email}. You can now login.`);
+      setSuccess(`Registered ${data.register.user.email}. You can now login.`);
       setTimeout(() => router.push("/login"), 800);
     } catch (err) {
       setError((err as Error).message);
@@ -53,18 +65,29 @@ export default function RegisterPage() {
         <div className="mx-auto grid w-[350px] gap-8">
           <div className="grid gap-2 text-center">
             <h1 className="text-3xl font-bold">Create an account</h1>
-            <p className="text-balance text-muted-foreground">
-              Sign up to start using the demo and explore the mocked GraphQL history feed.
-            </p>
+            <p className="text-balance text-muted-foreground">Sign up to start using the GraphQL-powered demo.</p>
           </div>
 
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl">Register</CardTitle>
-              <CardDescription>Enter your email below to create your account.</CardDescription>
+              <CardDescription>Enter your details below to create your account.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <form className="grid gap-4" onSubmit={handleSubmit}>
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="alice"
+                    required
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                  />
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -119,7 +142,7 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold">Signup-01 styling</h2>
             <p className="max-w-[360px] text-balance text-sm text-muted-foreground">
-              This registration flow echoes the <span className="font-semibold">signup-01</span> design while keeping the form wired to the mocked GraphQL mutation.
+              This registration flow echoes the <span className="font-semibold">signup-01</span> design while keeping the form wired to the live GraphQL mutation.
             </p>
           </div>
         </div>

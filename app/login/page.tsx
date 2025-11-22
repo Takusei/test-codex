@@ -10,19 +10,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requestGraphQL } from "@/lib/graphql-client";
 
-const LOGIN_QUERY = `
-  query Login($email: String!, $password: String!) {
-    login(email: $email, password: $password) {
-      id
-      email
+const LOGIN_MUTATION = `
+  mutation Login($username: String!, $password: String!) {
+    login(username: $username, password: $password) {
+      token
+      user {
+        id
+        username
+        email
+        createdAt
+      }
     }
   }
 `;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("password");
+  const [username, setUsername] = useState("alice");
+  const [password, setPassword] = useState("mypassword");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,11 +37,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const data = await requestGraphQL<{ login: { id: string; email: string } }>(LOGIN_QUERY, {
-        email,
+      const data = await requestGraphQL<{
+        login: {
+          token: string;
+          user: { id: string; username: string; email: string; createdAt: string };
+        };
+      }>(LOGIN_MUTATION, {
+        username,
         password,
       });
-      localStorage.setItem("user", JSON.stringify(data.login));
+      localStorage.setItem("auth", JSON.stringify(data.login));
       router.push("/");
     } catch (err) {
       setError((err as Error).message);
@@ -51,29 +61,27 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[350px] gap-8">
           <div className="grid gap-2 text-center">
             <h1 className="text-3xl font-bold">Login</h1>
-            <p className="text-balance text-muted-foreground">
-              Sign in to access the home view powered by the mocked GraphQL endpoint.
-            </p>
+            <p className="text-balance text-muted-foreground">Sign in with your GraphQL credentials.</p>
           </div>
 
           <Card className="border-border/60 shadow-sm">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl">Welcome back</CardTitle>
-              <CardDescription>Enter your email below to sign in to your account.</CardDescription>
+              <CardDescription>Enter your username below to sign in to your account.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <form className="grid gap-4" onSubmit={handleSubmit}>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="m@example.com"
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="alice"
                     required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -117,7 +125,7 @@ export default function LoginPage() {
             <h2 className="text-2xl font-semibold">Next.js + Shadcn Login</h2>
             <p className="max-w-[360px] text-balance text-sm text-muted-foreground">
               This login experience mirrors the <span className="font-semibold">login-01</span> pattern from the
-              Shadcn collection, wired up to the mocked GraphQL authentication endpoint for this demo.
+              Shadcn collection, wired up to the live GraphQL authentication endpoint.
             </p>
           </div>
         </div>

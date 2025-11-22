@@ -7,9 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requestGraphQL } from "@/lib/graphql-client";
 
+const ME_QUERY = `
+  query Me {
+    me {
+      id
+      username
+      email
+      createdAt
+    }
+  }
+`;
+
 const HISTORY_QUERY = `
-  query History($userId: ID!) {
-    history(userId: $userId) {
+  query History {
+    history {
       id
       label
       timestamp
@@ -17,33 +28,35 @@ const HISTORY_QUERY = `
   }
 `;
 
-type User = { id: string; email: string };
+type Auth = { token: string; user: { id: string; username: string; email: string; createdAt: string } };
 type HistoryItem = { id: string; label: string; timestamp: string };
 
 export default function HomePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [auth, setAuth] = useState<Auth | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    const stored = typeof window !== "undefined" ? localStorage.getItem("auth") : null;
     if (!stored) {
       router.replace("/login");
       return;
     }
-    const parsed = JSON.parse(stored) as User;
-    setUser(parsed);
+    const parsed = JSON.parse(stored) as Auth;
+    setAuth(parsed);
 
     const fetchHistory = async () => {
       setLoading(true);
+      setHistoryError(null);
       try {
-        const data = await requestGraphQL<{ history: HistoryItem[] }>(HISTORY_QUERY, {
-          userId: parsed.id,
+        const data = await requestGraphQL<{ history: HistoryItem[] }>(HISTORY_QUERY, undefined, {
+          token: parsed.token,
         });
         setHistory(data.history);
       } catch (err) {
-        console.error(err);
+        setHistoryError((err as Error).message);
       } finally {
         setLoading(false);
       }
@@ -51,6 +64,22 @@ export default function HomePage() {
 
     fetchHistory();
   }, [router]);
+
+  useEffect(() => {
+    if (!auth) return;
+
+    const validateSession = async () => {
+      try {
+        const data = await requestGraphQL<{ me: Auth["user"] }>(ME_QUERY, undefined, { token: auth.token });
+        setAuth((current) => (current ? { ...current, user: data.me } : current));
+      } catch (err) {
+        console.error("Session validation failed", err);
+        router.replace("/login");
+      }
+    };
+
+    validateSession();
+  }, [auth, router]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
@@ -61,7 +90,8 @@ export default function HomePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? <p className="text-sm text-muted-foreground">Loading history...</p> : null}
-          {!loading && history.length === 0 ? (
+          {historyError ? <p className="text-sm text-destructive">{historyError}</p> : null}
+          {!loading && !historyError && history.length === 0 ? (
             <p className="text-sm text-muted-foreground">No history yet.</p>
           ) : null}
           <ul className="space-y-2">
@@ -80,7 +110,7 @@ export default function HomePage() {
 
       <Card className="min-h-[320px]">
         <CardHeader>
-          <CardTitle>Welcome{user ? `, ${user.email}` : ""}</CardTitle>
+          <CardTitle>Welcome{auth ? `, ${auth.user.username}` : ""}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>

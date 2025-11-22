@@ -3,12 +3,19 @@ export type GraphQLResponse<T> = {
   errors?: { message: string }[];
 };
 
-const endpoint = "/api/graphql";
+const endpoint = process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT ?? "http://127.0.0.1:8000/graphql";
 
-export async function requestGraphQL<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+export async function requestGraphQL<T>(
+  query: string,
+  variables?: Record<string, unknown>,
+  options?: { token?: string },
+): Promise<T> {
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.token ? { Authorization: `Bearer ${options.token}` } : {}),
+    },
     body: JSON.stringify({ query, variables }),
   });
 
