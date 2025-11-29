@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 from typing import AsyncGenerator, Dict, List, Optional
 
-from fastapi import FastAPI, Request, WebSocket
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from graphql import GraphQLError
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -46,26 +46,20 @@ def _extract_token(headers: dict) -> Optional[str]:
     return None
 
 
-async def get_context(
-    request: Optional[Request] = None,
-    websocket: Optional[WebSocket] = None,
-    connection_params: Optional[dict] = None,
-) -> dict:
-    """Extract bearer token from HTTP or WebSocket headers or connection params."""
+async def get_context(request: Request) -> dict:
+    """Extract bearer token from HTTP headers or WebSocket init payload."""
 
-    headers = {}
-    if request is not None:
-        headers = request.headers
-    elif websocket is not None:
-        headers = websocket.headers
-
+    headers = request.headers
     token = _extract_token(headers)
 
-    if not token and connection_params:
-        # When using graphql-ws clients, the token can be provided via connection params.
+    if not token:
+        # Strawberry exposes connection params from the `connection_init` payload on the scope
+        # for WebSocket requests using the GraphQL-WS transport. We keep a best-effort check
+        # here so streaming subscriptions can authenticate via connection params.
+        connection_params = request.scope.get("graphql_transport_ws_init_payload") or {}
         token = _extract_token(connection_params)
 
-    return {"request": request or websocket, "auth": _AuthContext(token)}
+    return {"request": request, "auth": _AuthContext(token)}
 
 
 def _build_llm(streaming: bool = False) -> ChatOpenAI:
