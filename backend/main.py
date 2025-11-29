@@ -46,17 +46,26 @@ def _extract_token(headers: dict) -> Optional[str]:
     return None
 
 
-async def get_context(request: Request, connection_params: Optional[dict] = None) -> dict:
+async def get_context(
+    request: Optional[Request] = None,
+    websocket: Optional[WebSocket] = None,
+    connection_params: Optional[dict] = None,
+) -> dict:
     """Extract bearer token from HTTP or WebSocket headers or connection params."""
 
-    headers = request.headers if hasattr(request, "headers") else {}
+    headers = {}
+    if request is not None:
+        headers = request.headers
+    elif websocket is not None:
+        headers = websocket.headers
+
     token = _extract_token(headers)
 
     if not token and connection_params:
         # When using graphql-ws clients, the token can be provided via connection params.
         token = _extract_token(connection_params)
 
-    return {"request": request, "auth": _AuthContext(token)}
+    return {"request": request or websocket, "auth": _AuthContext(token)}
 
 
 def _build_llm(streaming: bool = False) -> ChatOpenAI:
