@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import uuid
 from pathlib import Path
-from typing import AsyncGenerator, Dict, List, Optional, Union
+from typing import AsyncGenerator, Dict, List, Optional
 
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.staticfiles import StaticFiles
@@ -46,9 +46,7 @@ def _extract_token(headers: dict) -> Optional[str]:
     return None
 
 
-async def get_context(
-    request: Union[Request, WebSocket], connection_params: Optional[dict] = None
-) -> dict:
+async def get_context(request: Request, connection_params: Optional[dict] = None) -> dict:
     """Extract bearer token from HTTP or WebSocket headers or connection params."""
 
     headers = request.headers if hasattr(request, "headers") else {}
