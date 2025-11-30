@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LangChain Chatbot</title>
+    <style>
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, sans-serif; background: #0b1220; color: #e5e7eb; display: flex; flex-direction: column; height: 100vh; }
+      header { padding: 16px 20px; background: #111827; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 12px rgba(0,0,0,0.35); position: sticky; top: 0; z-index: 10; }
+      header h1 { margin: 0; font-size: 18px; }
+      header button { background: #ef4444; border: none; padding: 8px 12px; color: white; border-radius: 8px; cursor: pointer; font-weight: 700; }
+      #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+      .bubble { max-width: 680px; padding: 12px 14px; border-radius: 12px; line-height: 1.5; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+      .user { align-self: flex-end; background: linear-gradient(120deg, #2563eb, #4f46e5); color: #f8fafc; }
+      .bot { align-self: flex-start; background: #111827; border: 1px solid #1f2937; }
+      form { padding: 16px; background: #0f172a; display: flex; gap: 12px; align-items: center; }
+      textarea { flex: 1; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; color: #e5e7eb; font-size: 15px; min-height: 56px; resize: vertical; }
+      button { background: #2563eb; border: none; color: white; padding: 12px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+      .actions { display: flex; gap: 10px; }
+      .status { font-size: 13px; color: #9ca3af; padding: 0 16px 8px; }
+    </style>
+    <script src="https://unpkg.com/graphql-ws@5.12.0/umd/graphql-ws.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Chatbot</h1>
+      <div class="actions">
+        <button id="reset">Reset Session</button>
+        <button id="logout" style="background:#374151">Logout</button>
+      </div>
+    </header>
+    <div id="status" class="status"></div>
+    <div id="chat"></div>
+    <form id="chat-form">
+      <textarea id="message" placeholder="Ask me anything..." required></textarea>
+      <div class="actions">
+        <button type="submit">Send</button>
+        <button type="button" id="stream">Stream</button>
+      </div>
+    </form>
+    <script>
+      const chatEl = document.getElementById('chat');
+      const messageInput = document.getElementById('message');
+      const statusEl = document.getElementById('status');
+      const resetBtn = document.getElementById('reset');
+      const logoutBtn = document.getElementById('logout');
+      const token = localStorage.getItem('chatbot_token');
+
+      if (!token) {
+        window.location.href = '/frontend/login.html';
+      }
+
+      const wsClient = graphqlWs.createClient({
+        url: (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/graphql',
+        connectionParams: { Authorization: `Bearer ${token}` },
+      });
+
+      function addBubble(text, isUser = false) {
+        const div = document.createElement('div');
+        div.className = `bubble ${isUser ? 'user' : 'bot'}`;
+        div.textContent = text;
+        chatEl.appendChild(div);
+        chatEl.scrollTop = chatEl.scrollHeight;
+        return div;
+      }
+
+      async function sendChat(message) {
+        statusEl.textContent = '';
+        const body = {
+          query: 'mutation($msg:String!){ chat(message:$msg){ reply } }',
+          variables: { msg: message },
+        };
+        const response = await fetch('/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        const result = await response.json();
+        if (result.errors) throw new Error(result.errors[0].message);
+        return result.data.chat.reply;
+      }
+
+      function streamChat(message, placeholderEl) {
+        statusEl.textContent = 'Streaming...';
+        let accumulated = '';
+        wsClient.subscribe(
+          { query: 'subscription($msg:String!){ chatStream(message:$msg) }', variables: { msg: message } },
+          {
+            next: ({ data }) => {
+              const chunk = data?.chatStream || '';
+              accumulated += chunk;
+              placeholderEl.textContent = accumulated || '...';
+            },
+            error: (err) => {
+              statusEl.textContent = 'Stream error: ' + err.message;
+            },
+            complete: () => {
+              statusEl.textContent = '';
+              placeholderEl.textContent = accumulated;
+            },
+          }
+        );
+      }
+
+      document.getElementById('chat-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+        addBubble(msg, true);
+        messageInput.value = '';
+        const botBubble = addBubble('...');
+        try {
+          const reply = await sendChat(msg);
+          botBubble.textContent = reply;
+        } catch (err) {
+          botBubble.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      document.getElementById('stream').addEventListener('click', () => {
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+        addBubble(msg, true);
+        messageInput.value = '';
+        const placeholder = addBubble('...');
+        streamChat(msg, placeholder);
+      });
+
+      resetBtn.addEventListener('click', async () => {
+        statusEl.textContent = '';
+        try {
+          const response = await fetch('/graphql', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ query: 'mutation { resetSession { message } }' }),
+          });
+          const result = await response.json();
+          if (result.errors) throw new Error(result.errors[0].message);
+          statusEl.textContent = result.data.resetSession.message;
+          chatEl.innerHTML = '';
+        } catch (err) {
+          statusEl.textContent = 'Reset failed: ' + err.message;
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('chatbot_token');
+        window.location.href = '/frontend/login.html';
+      });
+    </script>
+  </body>
+</html>
