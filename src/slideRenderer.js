@@ -128,15 +128,20 @@ function renderMarpSlides(markdown) {
 
   const { html, css } = marpit.render(markdown, { theme: 'kpmg-esg' });
 
+  // Marpit already injects the compiled theme CSS, but add the raw theme CSS as a
+  // fallback to ensure the intended layout still appears even if Marpit strips
+  // theme metadata. This keeps the KPMG-inspired look visible in exported HTML.
+  const combinedCss = `${css}\n${theme}`;
+
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Generated Marp Deck</title>
-  <style>${css}</style>
+  <style>${combinedCss}</style>
 </head>
-<body>
+<body style="background:#f4f6f8; padding:24px;">
   ${html}
 </body>
 </html>`;
