@@ -1,0 +1,17 @@
+{
+  "name": "test-codex",
+  "version": "1.0.0",
+  "description": "Minimal Marp-like slide rendering API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/render-example.js"
+  },
+  "dependencies": {
+    "@marp-team/marpit": "^3.8.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
