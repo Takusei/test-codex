@@ -34,7 +34,7 @@ This repository exposes a tiny HTTP endpoint that turns Marp/Marpit-flavoured Ma
 
 ## Previewing locally
 
-Run the bundled example renderer to see a truncated deck in the console:
+Run the bundled example renderer to see a truncated deck in the console. The full output is also written to `test-output.html` in the repository root so you can open it in a browser:
 
 ```bash
 npm test
