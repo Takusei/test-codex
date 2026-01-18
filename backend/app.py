@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-from backend.service import load_tree, sync_folder
+from service import load_tree, sync_folder
 
 app = FastAPI()
 
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 
@@ -45,4 +45,4 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("VDR_PORT", "4310"))
-    uvicorn.run("backend.app:app", host="127.0.0.1", port=port, reload=False)
+    uvicorn.run("app:app", host="127.0.0.1", port=port, reload=False)

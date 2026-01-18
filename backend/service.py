@@ -67,6 +67,9 @@ def is_text_file(file_path: Path) -> bool:
 def get_openai_client() -> OpenAI | None:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key or OpenAI is None:
+        print(
+            "OpenAI API key not found or OpenAI library not installed; skipping summaries."
+        )
         return None
     return OpenAI(api_key=api_key)
 
@@ -79,7 +82,7 @@ def summarize_text(text: str) -> str:
 
     prompt = f"Summarize the following document in 3-5 bullet points:\n\n{text}"
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1-nano",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )
@@ -105,28 +108,53 @@ def load_tree(root_path: str) -> dict:
 
     tree_map: dict[str, dict] = {}
     root_path_obj = Path(root_path)
-    root_node = {"name": root_path_obj.name, "path": root_path, "children": []}
-    tree_map[root_path] = root_node
+    root_node = {
+        "name": root_path_obj.name,
+        "path": str(root_path_obj),
+        "children": [],
+    }
+    tree_map[str(root_path_obj)] = root_node
 
+    # Create all directory nodes first
+    for row in rows:
+        path_str = row[1]
+        path_obj = Path(path_str)
+        for p in path_obj.parents:
+            if str(p) == root_path:
+                break
+            if str(p) not in tree_map:
+                tree_map[str(p)] = {
+                    "name": p.name,
+                    "path": str(p),
+                    "children": [],
+                }
+
+    # Add file nodes and attach all nodes to parents
     for row in rows:
         path_str = row[1]
         name = row[2]
         parent_path = row[3]
-        tree_map.setdefault(
-            parent_path,
-            {"name": Path(parent_path).name, "path": parent_path, "children": []},
-        )
-        tree_map.setdefault(path_str, {"name": name, "path": path_str, "children": []})
+        file_node = {"name": name, "path": path_str, "children": []}
+        tree_map[path_str] = file_node
 
-        tree_map[parent_path]["children"].append(tree_map[path_str])
+        if parent_path in tree_map:
+            parent_node = tree_map[parent_path]
+            if file_node not in parent_node["children"]:
+                parent_node["children"].append(file_node)
 
-    for node_path, node in list(tree_map.items()):
-        if node_path == root_path:
+    # Attach directories to their parents
+    for path, node in tree_map.items():
+        if path == str(root_path_obj):
             continue
-        parent_path = str(Path(node_path).parent)
-        parent = tree_map.get(parent_path)
-        if parent and node not in parent["children"]:
-            parent["children"].append(node)
+        parent_path = str(Path(path).parent)
+        if parent_path in tree_map and parent_path != path:
+            parent_node = tree_map[parent_path]
+            if node not in parent_node["children"]:
+                parent_node["children"].append(node)
+
+    # Sort children by name
+    for node in tree_map.values():
+        node["children"].sort(key=lambda x: x["name"])
 
     files = [
         {
@@ -159,13 +187,16 @@ async def sync_folder(root_path: str) -> dict:
     now = datetime.utcnow().isoformat()
 
     for entry in walk_directory(root_path):
-        if entry.size > MAX_FILE_BYTES or not is_text_file(entry.path):
-            continue
-        try:
-            text = entry.path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        summary = summarize_text(text)
+        summary = ""
+        if entry.size <= MAX_FILE_BYTES and is_text_file(entry.path):
+            try:
+                text = entry.path.read_text(encoding="utf-8")
+                summary = summarize_text(text)
+            except OSError:
+                pass  # Keep summary empty if read fails
+        else:
+            summary = f"File type: {entry.path.suffix}"
+
         conn.execute(
             insert_sql,
             (

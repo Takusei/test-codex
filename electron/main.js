@@ -2,6 +2,8 @@ const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
 let mainWindow;
 let backendProcess;
 
