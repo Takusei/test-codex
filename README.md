@@ -2,7 +2,7 @@
 
 ## VDR Desktop App (Electron + React)
 
-This project scaffolds an Electron desktop app with a React renderer and a local Node.js backend.
+This project scaffolds an Electron desktop app with a React renderer and a local FastAPI backend.
 
 ### Features
 - Select a local folder from the Electron UI.
@@ -15,13 +15,21 @@ This project scaffolds an Electron desktop app with a React renderer and a local
 npm install
 ```
 
+### Python Backend Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
+
 ### Development
 
 ```bash
 npm run dev
 ```
 
-This launches the Vite dev server and Electron.
+This launches the Vite dev server and Electron. The Electron main process starts the FastAPI backend.
 
 ### Environment Variables
 

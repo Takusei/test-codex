@@ -11,12 +11,6 @@
     "build:renderer": "vite build --config renderer/vite.config.js",
     "start": "electron ."
   },
-  "dependencies": {
-    "better-sqlite3": "^9.4.0",
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "openai": "^4.28.0"
-  },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^8.2.2",

@@ -1,11 +1,28 @@
 const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const path = require("path");
-const { startServer } = require("../backend/server");
+const { spawn } = require("child_process");
 
 let mainWindow;
+let backendProcess;
 
 const isDev = !app.isPackaged;
 const rendererUrl = "http://localhost:5173";
+
+function startBackend() {
+  if (backendProcess) {
+    return;
+  }
+
+  const backendPath = path.join(__dirname, "..", "backend", "app.py");
+  backendProcess = spawn("python", [backendPath], {
+    env: process.env,
+    stdio: "inherit"
+  });
+
+  backendProcess.on("exit", () => {
+    backendProcess = null;
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -26,8 +43,8 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(async () => {
-  await startServer();
+app.whenReady().then(() => {
+  startBackend();
   createWindow();
 
   app.on("activate", () => {
@@ -38,6 +55,9 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  if (backendProcess) {
+    backendProcess.kill();
+  }
   if (process.platform !== "darwin") {
     app.quit();
   }
