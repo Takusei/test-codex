@@ -15,11 +15,20 @@ function startBackend() {
     return;
   }
 
-  const backendPath = path.join(__dirname, "..", "backend", "app.py");
-  backendProcess = spawn("python", [backendPath], {
-    env: process.env,
-    stdio: "inherit"
-  });
+  let backendPath;
+  if (isDev) {
+    backendPath = path.join(__dirname, "..", "backend", "app.py");
+    backendProcess = spawn("python", [backendPath], {
+      env: process.env,
+      stdio: "inherit"
+    });
+  } else {
+    backendPath = path.join(process.resourcesPath, "backend_app", "backend_app");
+    backendProcess = spawn(backendPath, [], {
+      env: process.env,
+      stdio: "inherit"
+    });
+  }
 
   backendProcess.on("exit", () => {
     backendProcess = null;
@@ -41,7 +50,7 @@ function createWindow() {
     mainWindow.loadURL(rendererUrl);
     mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
-    mainWindow.loadFile(path.join(__dirname, "..", "dist", "renderer", "index.html"));
+    mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }
 }
 
