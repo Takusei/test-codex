@@ -1,0 +1,116 @@
+:root {
+  font-family: "Inter", system-ui, sans-serif;
+  color: #1e1f24;
+  background-color: #f4f5f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.primary,
+.secondary {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primary {
+  background: #2d5bff;
+  color: white;
+}
+
+.secondary {
+  background: #e6e8ef;
+  color: #1e1f24;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.sidebar,
+.content {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.tree-node {
+  margin: 6px 0;
+}
+
+.tree-name {
+  font-weight: 500;
+}
+
+.table {
+  display: grid;
+  grid-auto-rows: minmax(44px, auto);
+  gap: 8px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 0.6fr 0.8fr;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.table-header {
+  background: #e9eefc;
+  font-weight: 600;
+}
+
+.table-row.empty {
+  grid-column: 1 / -1;
+  justify-content: center;
+  text-align: center;
+  color: #6b7280;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.error {
+  color: #c2410c;
+  margin-top: 12px;
+}
+
+.mono {
+  font-family: "SF Mono", "Roboto Mono", monospace;
+  font-size: 12px;
+  color: #111827;
+  word-break: break-all;
+}

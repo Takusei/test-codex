@@ -1,0 +1,27 @@
+{
+  "name": "test-codex-vdr",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:renderer": "vite --config renderer/vite.config.js",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "build:renderer": "vite build --config renderer/vite.config.js",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "openai": "^4.28.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.1",
+    "vite": "^5.1.0",
+    "wait-on": "^7.2.0"
+  }
+}
