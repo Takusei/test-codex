@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vscode/
+.DS_Store
+*.sqlite
+.venv/
+
+.env
+out/
+dist-backend/
+build/
